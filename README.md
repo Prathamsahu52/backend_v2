@@ -24,7 +24,7 @@ Everyone else may clone the main branch
   ```
     djangoenv\Scripts\activate.bat
   ```
-  This activates your virtual environment.
+  This activates your virtual environment. Working on the virtual environment ensures the stability of dependencies used for the project.
   
   #### b) For Linux/MacOS:
   ```
