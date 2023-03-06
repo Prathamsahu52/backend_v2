@@ -24,7 +24,7 @@ def generate_random_string(length):
 
 # Wallet Model instantiated when a User is created
 class Wallet(models.Model):
-    user = models.OneToOneField("Customuser", on_delete=models.CASCADE)
+    user = models.OneToOneField("CustomUser", on_delete=models.CASCADE)
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
 
     def __str__(self):
@@ -43,7 +43,7 @@ class Transaction(models.Model):
         "Wallet", on_delete=models.DO_NOTHING, related_name="receiver"
     )
 
-    timestap = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
     transaction_amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     # STATUS
