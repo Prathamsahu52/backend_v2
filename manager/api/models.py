@@ -3,6 +3,7 @@ from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
     PermissionsMixin,
+    AbstractUser
 )
 from django.core.validators import RegexValidator
 from datetime import datetime
@@ -16,7 +17,6 @@ TXN_ID_LENGTH = 10
 
 
 def generate_random_string(length):
-    random.seed(datetime.now().timestamp())
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
@@ -33,7 +33,7 @@ class Wallet(models.Model):
 # Transaction Model instantiated when a Transaction is created
 class Transaction(models.Model):
     transaction_id = models.CharField(
-        max_length=TXN_ID_LENGTH, primary_key=True, unique=True
+        max_length=TXN_ID_LENGTH, primary_key=True, unique=True, default=generate_random_string(TXN_ID_LENGTH)
     )
     # Sender and Receiver are both Wallets
     sender = models.ForeignKey(
@@ -71,15 +71,17 @@ class Transaction(models.Model):
             raise ValidationError("Transaction amount must be greater than 0")
         if self.sender == self.receiver:
             raise ValidationError("Sender and Receiver cannot be the same")
-        if self.sender.balance < self.transaction_amount:
-            raise ValidationError("Insufficient funds")
 
     def save(self, *args, **kwargs):
         self.clean()
         if self.transaction_id is None:
             self.transaction_id = generate_random_string(TXN_ID_LENGTH)
-        self.sender.balance -= self.transaction_amount
-        self.receiver.balance += self.transaction_amount
+        if self.sender.balance < self.transaction_amount:
+            self.transaction_status = self.FAILED
+        else:
+            self.transaction_status = self.SUCCESS
+            self.sender.balance -= self.transaction_amount
+            self.receiver.balance += self.transaction_amount
         self.sender.save()
         self.receiver.save()
 
@@ -89,8 +91,6 @@ class Transaction(models.Model):
             self.receiver.balance -= self.transaction_amount
             self.sender.save()
             self.receiver.save()
-        else:
-            self.transaction_status = self.SUCCESS
 
         super().save(*args, **kwargs)
 
