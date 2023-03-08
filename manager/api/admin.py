@@ -59,9 +59,10 @@ class TransactionAdmin(admin.ModelAdmin):
         "transaction_amount",
         "timestamp",
         "transaction_status",
+        "transaction_id"
     )
 
-    search_fields = ("sender", "receiver")
+    search_fields = ("transaction_id",)
     readonly_fields = ("transaction_id",)
     list_filter = ()
     fieldsets = ()
