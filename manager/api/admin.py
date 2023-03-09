@@ -8,7 +8,7 @@ from django.contrib import admin
 # admin.site.register(Transaction)
 # admin.site.register(Wallet)
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Vendor, Customer, Transaction, Wallet, Notification
+from .models import CustomUser, Vendor, Customer, Transaction, Wallet, Notification,Issue
 
 
 class CustomUserAdmin(UserAdmin):
@@ -88,6 +88,12 @@ class NotifAdmin(admin.ModelAdmin):
     readonly_fields = ("user", "timestamp", "subject", "content")
     search_fields = ("subject", "content")
 
+class IssueAdmin(admin.ModelAdmin):
+    list_display = ("user","subject","content","timestamp","resolved_status")
+    search_fields = ("user","resolved_status","subject")
+    readonly_fields = ("user","subject","content","timestamp")
+    list_filter = ()
+    fieldsets = ()
 
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(Vendor, VendorAdmin)
@@ -95,3 +101,4 @@ admin.site.register(Customer, CustomerAdmin)
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Wallet, WalletAdmin)
 admin.site.register(Notification, NotifAdmin)
+admin.site.register(Issue,IssueAdmin)

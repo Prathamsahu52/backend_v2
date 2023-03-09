@@ -1,8 +1,8 @@
 from django.shortcuts import render
 from rest_framework import generics
 
-from .models import CustomUser, Customer, Vendor, Transaction, Wallet
-from .serializers import CustomUserSerializer, TransactionSerializer
+from .models import CustomUser, Customer, Vendor, Transaction, Wallet,Notification
+from .serializers import CustomUserSerializer, TransactionSerializer,NotificationSerializer
 
 # Create your views here.
 # List of all CustomUsers
@@ -74,11 +74,40 @@ class CustomerVendorList(generics.ListAPIView):
             if transaction.receiver.user.is_vendor:
                 vendors.append(transaction.receiver.user)
         return vendors
+# list of all the customers only if the user is a vendor
+class VendorCustomerList(generics.ListAPIView):
+    serializer_class = CustomUserSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs["user_id"]
+        vendor = Vendor.objects.get(user_id=user_id)
+        wallet = Wallet.objects.get(user=vendor)
+        # list of all the ransactions made by the vendor
+        transactions = Transaction.objects.filter(receiver=wallet)
+        # list of all the customers at the end of the transactions
+        customers = []
+        for transaction in transactions:
+            if transaction.sender.user.is_customer:
+                customers.append(transaction.sender.user)
+        return customers
+#list of all the notifications
+class NotificationList(generics.ListAPIView):
+    queryset = Notification.objects.all()
+    serializer_class = NotificationSerializer
+
+#list of all the notifications of a user
+class UserNotificationList(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs["user_id"]
+        user = CustomUser.objects.get(user_id=user_id)
+        return Notification.objects.filter(user=user)
 
 """
 Remaining Views
-1. List of customers to a vendor
+1. List of customers to a vendor --done
 2. Pending dues for a vendor
 4. Pending dues of a customer
-3. Set of all notifs
+3. Set of all notifs -- done
 """

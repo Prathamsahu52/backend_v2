@@ -16,6 +16,8 @@ USER_ID_LENGTH = 8
 TXN_ID_LENGTH = 10
 MAX_NOTIF_LEN = 256
 MAX_NOTIF_SUB_LEN = 64
+MAX_ISSUE_LEN = 512
+MAX_ISSUE_SUB_LEN = 64  
 
 
 def get_time(timestamp):
@@ -56,6 +58,7 @@ class Notification(models.Model):
     subject = models.CharField(max_length=MAX_NOTIF_SUB_LEN)
     content = models.TextField(max_length=MAX_NOTIF_LEN)
     mark_as_read = models.BooleanField(default=False)
+
 
 
 # Transaction Model instantiated when a Transaction is created
@@ -156,7 +159,26 @@ class Transaction(models.Model):
 
         super().save(*args, **kwargs)
 
+#Issues instantiated when a User raises one
+class Issue(models.Model):
 
+    user = models.ForeignKey("CustomUser", on_delete=models.CASCADE)
+    subject = models.CharField(max_length=MAX_ISSUE_SUB_LEN)
+    content = models.TextField(max_length=MAX_ISSUE_LEN)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    transaction_id = models.ForeignKey("Transaction", on_delete=models.CASCADE , null=True, blank=True)
+    resolved_status = models.BooleanField(default=False)
+    
+    def __str__(self):
+        return f"{self.user.username} raised an issue"
+    
+    def clean(self):
+        if self.transaction_id is None:
+            raise ValidationError("Transaction ID cannot be empty")
+    def save(self, *args, **kwargs):
+        self.clean()
+
+        super().save(*args, **kwargs)
 # Now to our User models
 class CustomUserManager(BaseUserManager):
     def create_user(self, username, email, phone_number, password=None, **extra_fields):
