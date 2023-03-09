@@ -126,7 +126,6 @@ class Transaction(models.Model):
                 subject="Transaction failed.",
                 content=f"Transaction at {get_time(datetime.now())} failed: insufficient funds.",
             )
-
         else:
             self.transaction_status = self.SUCCESS
             self.sender.balance -= self.transaction_amount
