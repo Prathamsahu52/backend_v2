@@ -8,7 +8,7 @@ from django.contrib import admin
 # admin.site.register(Transaction)
 # admin.site.register(Wallet)
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Vendor, Customer, Transaction, Wallet
+from .models import CustomUser, Vendor, Customer, Transaction, Wallet, Notification
 
 
 class CustomUserAdmin(UserAdmin):
@@ -26,6 +26,7 @@ class CustomUserAdmin(UserAdmin):
     list_filter = ()
     fieldsets = ()
 
+
 class CustomerAdmin(UserAdmin):
     list_display = (
         "username",
@@ -38,6 +39,7 @@ class CustomerAdmin(UserAdmin):
     readonly_fields = ("user_id",)
     list_filter = ()
     fieldsets = ()
+
 
 class VendorAdmin(UserAdmin):
     list_display = (
@@ -52,6 +54,7 @@ class VendorAdmin(UserAdmin):
     list_filter = ()
     fieldsets = ()
 
+
 class TransactionAdmin(admin.ModelAdmin):
     list_display = (
         "sender",
@@ -59,13 +62,14 @@ class TransactionAdmin(admin.ModelAdmin):
         "transaction_amount",
         "timestamp",
         "transaction_status",
-        "transaction_id"
+        "transaction_id",
     )
 
     search_fields = ("transaction_id",)
     readonly_fields = ("transaction_id",)
     list_filter = ()
     fieldsets = ()
+
 
 class WalletAdmin(admin.ModelAdmin):
     list_display = (
@@ -78,8 +82,16 @@ class WalletAdmin(admin.ModelAdmin):
     list_filter = ()
     fieldsets = ()
 
+
+class NotifAdmin(admin.ModelAdmin):
+    list_display = ("user", "timestamp", "subject", "content")
+    readonly_fields = ("user", "timestamp", "subject", "content")
+    search_fields = ("subject", "content")
+
+
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(Vendor, VendorAdmin)
 admin.site.register(Customer, CustomerAdmin)
 admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Wallet, WalletAdmin)
+admin.site.register(Notification, NotifAdmin)
