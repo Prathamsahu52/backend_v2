@@ -4,6 +4,8 @@ from rest_framework import generics
 from .models import CustomUser, Customer, Vendor, Transaction, Wallet,Notification
 from .serializers import CustomUserSerializer, TransactionSerializer,NotificationSerializer
 
+from rest_framework.response import Response
+
 # Create your views here.
 # List of all CustomUsers
 class CustomUserList(generics.ListCreateAPIView):
@@ -103,6 +105,31 @@ class UserNotificationList(generics.ListAPIView):
         user_id = self.kwargs["user_id"]
         user = CustomUser.objects.get(user_id=user_id)
         return Notification.objects.filter(user=user)
+    
+class PendingDuesList(generics.ListAPIView):
+    serializer_class = TransactionSerializer
+
+    def get_queryset(self):
+        user_id = self.kwargs["user_id"]
+        user = CustomUser.objects.get(user_id=user_id)
+        wallet = Wallet.objects.get(user=user)
+        return Transaction.objects.filter(sender=wallet, transaction_status=2)
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        # returning list of sum of dues and associated reciever
+        serializer = self.get_serializer(queryset, many=True)
+        pending_dues = {}
+        for transaction in queryset:
+            receiver_wallet = transaction.receiver
+            receiver = receiver_wallet.user.username
+            if receiver not in pending_dues:
+                pending_dues[receiver] = 0
+            pending_dues[receiver] += transaction.transaction_amount
+        return Response({"pending_dues": pending_dues})
+
+
+
 
 """
 Remaining Views
