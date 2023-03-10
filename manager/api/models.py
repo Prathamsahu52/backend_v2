@@ -211,6 +211,9 @@ class Issue(models.Model):
             raise ValidationError("User not authorized to raise an issue on this transaction")
     def save(self, *args, **kwargs):
         self.clean()
+        transaction = Transaction.objects.get(transaction_id=self.transaction_id.transaction_id)
+        transaction.transaction_status = 3 # In_Review
+        super(Transaction, transaction).save()
 
         super().save(*args, **kwargs)
 
