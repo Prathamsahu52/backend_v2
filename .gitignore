@@ -1,1 +1,11 @@
 *.pyc
+manager/api/migrations/*
+manager/api/__pycache__/__init__.cpython-310.pyc
+manager/api/__pycache__/admin.cpython-310.pyc
+manager/api/__pycache__/apps.cpython-310.pyc
+manager/api/__pycache__/models.cpython-310.pyc
+manager/api/migrations/__init__.py
+manager/manager/__pycache__/__init__.cpython-310.pyc
+manager/manager/__pycache__/settings.cpython-310.pyc
+manager/manager/__pycache__/urls.cpython-310.pyc
+manager/manager/__pycache__/wsgi.cpython-310.pyc

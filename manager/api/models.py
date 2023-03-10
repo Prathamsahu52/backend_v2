@@ -17,7 +17,8 @@ TXN_ID_LENGTH = 10
 MAX_NOTIF_LEN = 256
 MAX_NOTIF_SUB_LEN = 64
 MAX_ISSUE_LEN = 512
-MAX_ISSUE_SUB_LEN = 64  
+MAX_ISSUE_SUB_LEN = 64
+PENDING_LIMIT = 100000.0
 
 
 def get_time(timestamp):
@@ -42,6 +43,7 @@ def generate_txn_id():
 class Wallet(models.Model):
     user = models.OneToOneField("CustomUser", on_delete=models.CASCADE)
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    pending = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
 
     def __str__(self):
         return f"{self.user.username}'s Wallet"
@@ -60,7 +62,6 @@ class Notification(models.Model):
     mark_as_read = models.BooleanField(default=False)
 
 
-
 # Transaction Model instantiated when a Transaction is created
 class Transaction(models.Model):
     transaction_id = models.CharField(
@@ -68,10 +69,10 @@ class Transaction(models.Model):
     )
     # Sender and Receiver are both Wallets
     sender = models.ForeignKey(
-        "Wallet", on_delete=models.DO_NOTHING, related_name="sender"
+        "Wallet", on_delete=models.CASCADE, related_name="sender"
     )
     receiver = models.ForeignKey(
-        "Wallet", on_delete=models.DO_NOTHING, related_name="receiver"
+        "Wallet", on_delete=models.CASCADE, related_name="receiver"
     )
 
     timestamp = models.DateTimeField(auto_now_add=True)
@@ -108,6 +109,7 @@ class Transaction(models.Model):
                 content=f"Transaction at {get_time(datetime.now())} failed: amount must be greater than 0.",
             )
             raise ValidationError("Transaction amount must be greater than 0")
+
         if self.sender == self.receiver:
             Notification.objects.create(
                 user=self.sender.user,
@@ -121,7 +123,35 @@ class Transaction(models.Model):
         self.clean()
         if self.transaction_id is None:
             self.transaction_id = generate_txn_id()
-        if self.sender.balance < self.transaction_amount:
+
+        if self.transaction_status == self.PENDING:
+            if (self.sender.pending + self.transaction_amount) <= PENDING_LIMIT:
+                self.sender.pending += self.transaction_amount
+                Notification.objects.create(
+                    user=self.sender.user,
+                    timestamp=self.timestamp,
+                    subject="Transaction with payment pending.",
+                    content=f"Paid Rs. {self.transaction_amount} as PENDING to {self.receiver.user.username}  at {get_time(datetime.now())}.",
+                )
+
+                Notification.objects.create(
+                    user=self.receiver.user,
+                    timestamp=self.timestamp,
+                    subject="Transaction with payment pending.",
+                    content=f"Received Rs. {self.transaction_amount} as PENDING from {self.sender.user.username} at {get_time(datetime.now())}.",
+                )
+
+            else:
+                self.transaction_status = self.FAILED
+                Notification.objects.create(
+                    user=self.sender.user,
+                    timestamp=self.timestamp,
+                    subject="Transaction failed.",
+                    content=f"Transaction at {get_time(datetime.now())} failed: exceeded pending dues limit.",
+                )
+
+        elif self.sender.balance < self.transaction_amount:
+            # Could ask user if they want to switch to pending mode
             self.transaction_status = self.FAILED
             Notification.objects.create(
                 user=self.sender.user,
@@ -129,6 +159,7 @@ class Transaction(models.Model):
                 subject="Transaction failed.",
                 content=f"Transaction at {get_time(datetime.now())} failed: insufficient funds.",
             )
+
         else:
             self.transaction_status = self.SUCCESS
             self.sender.balance -= self.transaction_amount
@@ -179,6 +210,7 @@ class Issue(models.Model):
         self.clean()
 
         super().save(*args, **kwargs)
+
 # Now to our User models
 class CustomUserManager(BaseUserManager):
     def create_user(self, username, email, phone_number, password=None, **extra_fields):
@@ -203,6 +235,9 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(
         self, username, email, phone_number, password=None, **extra_fields
     ):
+        # extra_fields.setdefault("is_staff", True)
+        # extra_fields.setdefault("is_superuser", True)
+        # return self.create_user(username, email, phone_number, password, **extra_fields)
         if not username:
             raise ValueError("Username is required")
         if not email:
@@ -220,7 +255,7 @@ class CustomUserManager(BaseUserManager):
         user.is_superuser = True
         user.set_password(password)
         user.save(using=self._db)
-        
+
         return user
 
 
@@ -283,7 +318,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             self.type = self.Types.CUSTOMER
         if self.type == self.Types.VENDOR:
             self.is_vendor = True
-            self.is_customer = False           
+            self.is_customer = False
 
         else:
             self.is_vendor = False
@@ -308,6 +343,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
                 subject="Welcome!",
                 content=f"Hello Customer {self.username}, Welcome to CampusPay!",
             )
+
 
 class VendorManager(models.Manager):
     def create_user(self, username, email, phone_number, password=None, **extra_fields):
