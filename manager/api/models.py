@@ -203,9 +203,25 @@ class CustomUserManager(BaseUserManager):
     def create_superuser(
         self, username, email, phone_number, password=None, **extra_fields
     ):
-        extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_superuser", True)
-        return self.create_user(username, email, phone_number, password, **extra_fields)
+        if not username:
+            raise ValueError("Username is required")
+        if not email:
+            raise ValueError("Email is required")
+        if not phone_number:
+            raise ValueError("Phone number is required")
+
+        user = self.model(
+            username=username,
+            email=self.normalize_email(email),
+            phone_number=phone_number,
+            **extra_fields,
+        )
+        user.is_staff = True
+        user.is_superuser = True
+        user.set_password(password)
+        user.save(using=self._db)
+        
+        return user
 
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
@@ -267,30 +283,31 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
             self.type = self.Types.CUSTOMER
         if self.type == self.Types.VENDOR:
             self.is_vendor = True
-            self.is_customer = False
+            self.is_customer = False           
 
+        else:
+            self.is_vendor = False
+            self.is_customer = True
+
+        super().save(*args, **kwargs)
+        # instantiating a wallet for the user
+        if not Wallet.objects.filter(user=self).exists():
+            Wallet.objects.create(user=self)
+
+        if self.type == self.Types.VENDOR:
             Notification.objects.create(
                 user=self,
                 timestamp=datetime.now().timestamp(),
                 subject="Welcome!",
                 content=f"Hello Vendor {self.username}, Welcome to CampusPay!",
             )
-
         else:
-            self.is_vendor = False
-            self.is_customer = True
-
             Notification.objects.create(
                 user=self,
                 timestamp=datetime.now().timestamp(),
                 subject="Welcome!",
                 content=f"Hello Customer {self.username}, Welcome to CampusPay!",
             )
-        super().save(*args, **kwargs)
-        # instantiating a wallet for the user
-        if not Wallet.objects.filter(user=self).exists():
-            Wallet.objects.create(user=self)
-
 
 class VendorManager(models.Manager):
     def create_user(self, username, email, phone_number, password=None, **extra_fields):
