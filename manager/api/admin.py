@@ -8,7 +8,7 @@ from django.contrib import admin
 # admin.site.register(Transaction)
 # admin.site.register(Wallet)
 from django.contrib.auth.admin import UserAdmin
-from .models import CustomUser, Vendor, Customer, Transaction, Wallet, Notification,Issue
+from .models import CustomUser, Vendor, Customer, Transaction, Wallet, Notification, Issue
 
 
 class CustomUserAdmin(UserAdmin):
@@ -72,10 +72,7 @@ class TransactionAdmin(admin.ModelAdmin):
 
 
 class WalletAdmin(admin.ModelAdmin):
-    list_display = (
-        "user",
-        "balance",
-    )
+    list_display = ("user", "balance", "pending")
 
     search_fields = ("user",)
     readonly_fields = ("user",)
