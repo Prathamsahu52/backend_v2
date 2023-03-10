@@ -105,7 +105,8 @@ class UserNotificationList(generics.ListAPIView):
         user_id = self.kwargs["user_id"]
         user = CustomUser.objects.get(user_id=user_id)
         return Notification.objects.filter(user=user)
-    
+
+#list of all the pending dues of a customer
 class PendingDuesList(generics.ListAPIView):
     serializer_class = TransactionSerializer
 
@@ -128,13 +129,35 @@ class PendingDuesList(generics.ListAPIView):
             pending_dues[receiver] += transaction.transaction_amount
         return Response({"pending_dues": pending_dues})
 
+#list of all the pending dues for a vendor
+class PendingDuesVendor(generics.ListAPIView):
+    serializer_class = TransactionSerializer
 
-
+    def get_queryset(self):
+        user_id = self.kwargs["user_id"]
+        user = CustomUser.objects.get(user_id=user_id)
+        wallet = Wallet.objects.get(user=user)
+        return Transaction.objects.filter(receiver=wallet, transaction_status=2)
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        # returning list of sum of dues and associated sender
+        serializer = self.get_serializer(queryset, many=True)
+        pending_dues = {}
+        for transaction in queryset:
+            sender_wallet = transaction.sender
+            sender = sender_wallet.user.username
+            if sender not in pending_dues:
+                pending_dues[sender] = 0
+            pending_dues[sender] += transaction.transaction_amount
+        return Response({"pending_dues": pending_dues})
 
 """
 Remaining Views
 1. List of customers to a vendor --done
 2. Pending dues for a vendor
+(What's implemented is all pending dues for a single user and how much others owe him)
+Not separately for a vendor or a customer.
 4. Pending dues of a customer
 3. Set of all notifs -- done
 """
