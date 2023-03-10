@@ -88,7 +88,8 @@ class NotifAdmin(admin.ModelAdmin):
 class IssueAdmin(admin.ModelAdmin):
     list_display = ("user","subject","content","timestamp","resolved_status")
     search_fields = ("user","resolved_status","subject")
-    readonly_fields = ("user","subject","content","timestamp")
+    # readonly_fields = ("user","subject","content","timestamp")
+    # readonly_fields = ()
     list_filter = ()
     fieldsets = ()
 

@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q,OuterRef
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -197,7 +198,7 @@ class Issue(models.Model):
     subject = models.CharField(max_length=MAX_ISSUE_SUB_LEN)
     content = models.TextField(max_length=MAX_ISSUE_LEN)
     timestamp = models.DateTimeField(auto_now_add=True)
-    transaction_id = models.ForeignKey("Transaction", on_delete=models.CASCADE , null=True, blank=True)
+    transaction_id = models.ForeignKey(Transaction, on_delete=models.CASCADE ,null=True, blank=True)
     resolved_status = models.BooleanField(default=False)
     
     def __str__(self):
@@ -206,6 +207,8 @@ class Issue(models.Model):
     def clean(self):
         if self.transaction_id is None:
             raise ValidationError("Transaction ID cannot be empty")
+        if self.transaction_id.sender.user != self.user:
+            raise ValidationError("User not authorized to raise an issue on this transaction")
     def save(self, *args, **kwargs):
         self.clean()
 
