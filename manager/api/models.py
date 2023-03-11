@@ -410,20 +410,20 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         if not Wallet.objects.filter(user=self).exists():
             Wallet.objects.create(user=self)
 
-        if self.type == self.Types.VENDOR:
-            Notification.objects.create(
-                user=self,
-                timestamp=datetime.now().timestamp(),
-                subject="Welcome!",
-                content=f"Hello Vendor {self.username}, Welcome to CampusPay!",
-            )
-        else:
-            Notification.objects.create(
-                user=self,
-                timestamp=datetime.now().timestamp(),
-                subject="Welcome!",
-                content=f"Hello Customer {self.username}, Welcome to CampusPay!",
-            )
+            if self.type == self.Types.VENDOR:
+                Notification.objects.create(
+                    user=self,
+                    timestamp=datetime.now().timestamp(),
+                    subject="Welcome!",
+                    content=f"Hello Vendor {self.username}, Welcome to CampusPay!",
+                )
+            else:
+                Notification.objects.create(
+                    user=self,
+                    timestamp=datetime.now().timestamp(),
+                    subject="Welcome!",
+                    content=f"Hello Customer {self.username}, Welcome to CampusPay!",
+                )
 
 
 class VendorManager(models.Manager):
