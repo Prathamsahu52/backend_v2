@@ -202,13 +202,13 @@ class Issue(models.Model):
     transaction = models.ForeignKey(
         Transaction, on_delete=models.CASCADE, null=True, blank=True
     )
-    # transaction_id = Transaction.objects.get(
-    #     transaction_id=self.transaction.transaction_id
-    # )
+    # init_txn_status = transaction.transaction_status
+    # transaction_obj = Transaction.objects.get(transaction_id=transaction.transaction_id)
 
     resolved_status = models.IntegerField(
         choices=Transaction.TRANSACTION_STATUS, default=Transaction.IN_REVIEW
     )
+    # init_txn_status = transaction.transaction_status
 
     def __str__(self):
         return f"{self.user.username} raised an issue"
@@ -222,6 +222,14 @@ class Issue(models.Model):
         ):
             raise ValidationError(
                 f"Not authorized to raise an issue on this transaction"
+            )
+
+        if (
+            self.transaction.transaction_status != Transaction.PENDING
+            and self.transaction.transaction_status != Transaction.IN_REVIEW
+        ):
+            raise ValidationError(
+                f"Not allowed to raise issue on {Transaction.TRANSACTION_STATUS[self.transaction.transaction_status][1]} transaction"
             )
 
     def save(self, *args, **kwargs):
@@ -254,6 +262,8 @@ class Issue(models.Model):
         elif self.resolved_status == Transaction.FAILED:
             # Revert pending amount
             self.transaction.transaction_status = Transaction.FAILED
+            # print(Transaction.TRANSACTION_STATUS[self.init_txn_status][1])
+            # if self.init_txn_status == Transaction.PENDING:
             self.transaction.sender.pending -= self.transaction.transaction_amount
             super(Transaction, self.transaction).save()
             super(Wallet, self.transaction.sender).save()
