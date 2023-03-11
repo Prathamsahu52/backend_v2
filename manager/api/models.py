@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Q,OuterRef
+from django.db.models import Q, OuterRef
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -191,31 +191,106 @@ class Transaction(models.Model):
 
         super().save(*args, **kwargs)
 
-#Issues instantiated when a User raises one
+
+# Issues instantiated when a User raises one
 class Issue(models.Model):
 
     user = models.ForeignKey("CustomUser", on_delete=models.CASCADE)
     subject = models.CharField(max_length=MAX_ISSUE_SUB_LEN)
     content = models.TextField(max_length=MAX_ISSUE_LEN)
     timestamp = models.DateTimeField(auto_now_add=True)
-    transaction_id = models.ForeignKey(Transaction, on_delete=models.CASCADE ,null=True, blank=True)
-    resolved_status = models.BooleanField(default=False)
-    
+    transaction = models.ForeignKey(
+        Transaction, on_delete=models.CASCADE, null=True, blank=True
+    )
+    # transaction_id = Transaction.objects.get(
+    #     transaction_id=self.transaction.transaction_id
+    # )
+
+    resolved_status = models.IntegerField(
+        choices=Transaction.TRANSACTION_STATUS, default=Transaction.IN_REVIEW
+    )
+
     def __str__(self):
         return f"{self.user.username} raised an issue"
-    
+
     def clean(self):
-        if self.transaction_id is None:
-            raise ValidationError("Transaction ID cannot be empty")
-        if self.transaction_id.sender.user != self.user:
-            raise ValidationError("User not authorized to raise an issue on this transaction")
+        if self.transaction is None:
+            raise ValidationError("Transaction cannot be empty")
+        if (
+            self.transaction.receiver.user.username != self.user.username
+            and self.transaction.sender.user.username != self.user.username
+        ):
+            raise ValidationError(
+                f"Not authorized to raise an issue on this transaction"
+            )
+
     def save(self, *args, **kwargs):
         self.clean()
-        transaction = Transaction.objects.get(transaction_id=self.transaction_id.transaction_id)
-        transaction.transaction_status = 3 # In_Review
-        super(Transaction, transaction).save()
+
+        self.transaction.transaction_status = Transaction.IN_REVIEW  # In_Review
+        super(Transaction, self.transaction).save()
+
+        if (
+            self.resolved_status == Transaction.SUCCESS
+            or self.resolved_status == Transaction.PENDING
+        ):
+            # Do nothing to balance
+            self.transaction.transaction_status = self.resolved_status
+            super(Transaction, self.transaction).save()
+
+            Notification.objects.create(
+                user=self.transaction.sender.user,
+                timestamp=self.timestamp,
+                subject="Issue resolved.",
+                content=f"Issue for transaction {self.transaction.transaction_id} resolved to status {Transaction.TRANSACTION_STATUS[self.resolved_status][1]} at {get_time(self.timestamp)}.",
+            )
+            Notification.objects.create(
+                user=self.transaction.receiver.user,
+                timestamp=self.timestamp,
+                subject="Issue resolved.",
+                content=f"Issue for transaction {self.transaction.transaction_id} resolved to status {Transaction.TRANSACTION_STATUS[self.resolved_status][1]} at {get_time(self.timestamp)}.",
+            )
+
+        elif self.resolved_status == Transaction.FAILED:
+            # Revert pending amount
+            self.transaction.transaction_status = Transaction.FAILED
+            self.transaction.sender.pending -= self.transaction.transaction_amount
+            super(Transaction, self.transaction).save()
+            super(Wallet, self.transaction.sender).save()
+
+            Notification.objects.create(
+                user=self.transaction.sender.user,
+                timestamp=self.timestamp,
+                subject="Issue resolved.",
+                content=f"Issue for transaction {self.transaction.transaction_id} resolved to status FAILED at {get_time(self.timestamp)}, pending amount Rs. {self.transaction.transaction_amount} reverted.",
+            )
+            Notification.objects.create(
+                user=self.transaction.receiver.user,
+                timestamp=self.timestamp,
+                subject="Issue resolved.",
+                content=f"Issue for transaction {self.transaction.transaction_id} resolved to status FAILED at {get_time(self.timestamp)}.",
+            )
 
         super().save(*args, **kwargs)
+
+        Notification.objects.create(
+            user=self.transaction.sender.user,
+            timestamp=self.timestamp,
+            subject="Issue raised.",
+            content='Issue: "'
+            + self.content
+            + f'" for transaction ID {self.transaction.transaction_id} raised at {get_time(self.timestamp)}.',
+        )
+
+        Notification.objects.create(
+            user=self.transaction.receiver.user,
+            timestamp=self.timestamp,
+            subject="Issue raised.",
+            content='Issue: "'
+            + self.content
+            + f'" for transaction ID {self.transaction.transaction_id} raised at {get_time(self.timestamp)}.',
+        )
+
 
 # Now to our User models
 class CustomUserManager(BaseUserManager):
@@ -335,20 +410,20 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         if not Wallet.objects.filter(user=self).exists():
             Wallet.objects.create(user=self)
 
-        if self.type == self.Types.VENDOR:
-            Notification.objects.create(
-                user=self,
-                timestamp=datetime.now().timestamp(),
-                subject="Welcome!",
-                content=f"Hello Vendor {self.username}, Welcome to CampusPay!",
-            )
-        else:
-            Notification.objects.create(
-                user=self,
-                timestamp=datetime.now().timestamp(),
-                subject="Welcome!",
-                content=f"Hello Customer {self.username}, Welcome to CampusPay!",
-            )
+            if self.type == self.Types.VENDOR:
+                Notification.objects.create(
+                    user=self,
+                    timestamp=datetime.now().timestamp(),
+                    subject="Welcome!",
+                    content=f"Hello Vendor {self.username}, Welcome to CampusPay!",
+                )
+            else:
+                Notification.objects.create(
+                    user=self,
+                    timestamp=datetime.now().timestamp(),
+                    subject="Welcome!",
+                    content=f"Hello Customer {self.username}, Welcome to CampusPay!",
+                )
 
 
 class VendorManager(models.Manager):
