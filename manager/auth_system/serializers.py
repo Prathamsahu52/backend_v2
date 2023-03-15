@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model, authenticate
+from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+
 
 UserModel = get_user_model()
 Types = UserModel.Types
@@ -60,3 +63,40 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserModel
         fields = ("user_id", "email", "username", "type", "phone_number")
+
+class EmailSerializer(serializers.Serializer):
+    """
+    Serializer for requesting a password reset e-mail.
+    """
+    email = serializers.EmailField(max_length=255)
+    class Meta:
+        fields = ("email",)
+    
+class PasswordResetSerializer(serializers.Serializer):
+    password = serializers.CharField(max_length=128, write_only=True)
+    confirm_password = serializers.CharField(max_length=128, write_only=True)
+
+    class Meta:
+        fields = ("password", "confirm_password")
+
+    def validate(self, data):
+        if data["password"] != data.pop("confirm_password"):
+            raise serializers.ValidationError("Passwords must match")
+        password = data.get("password")
+        token = self.context.get("kwargs").get("token")
+        encoded_pk = self.context.get("kwargs").get("encoded_pk")
+
+        if token is None or encoded_pk is None:
+            raise serializers.ValidationError("Invalid token or user id")
+        
+        pk = urlsafe_base64_decode(encoded_pk).decode()
+        user = UserModel.objects.get(pk=pk)
+
+        if not PasswordResetTokenGenerator().check_token(user, token):
+            raise serializers.ValidationError("The reset token is invalid")
+        
+        user.set_password(password)
+        user.save()
+
+        return data
+        

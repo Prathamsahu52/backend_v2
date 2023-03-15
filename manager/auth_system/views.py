@@ -1,10 +1,20 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, serializers, permissions
-from .serializers import UserRegisterSerializer, UserLoginSerializer, UserSerializer
+from .serializers import (
+    UserRegisterSerializer,
+    UserLoginSerializer,
+    UserSerializer,
+    EmailSerializer,
+    PasswordResetSerializer,
+)
 from django.contrib.auth import get_user_model, authenticate, login, logout
 from rest_framework.authentication import SessionAuthentication
 
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from django.urls import reverse
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
 UserModel = get_user_model()
 
@@ -27,8 +37,8 @@ class UserRegister(APIView):
             if user:
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-        
+
+
 class UserLogin(APIView):
     # use the UserLoginSerializer to validate the data
     serializer_class = UserLoginSerializer
@@ -73,3 +83,46 @@ class UserView(APIView):
     def get(self, request):
         serializer = UserSerializer(request.user)
         return Response({"user": serializer.data}, status=status.HTTP_200_OK)
+
+
+class PasswordReset(APIView):
+    permissions = (permissions.AllowAny,)
+    serializer_class = EmailSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+        if serializer.is_valid():
+            email = serializer.validated_data["email"]
+            user = UserModel.objects.get(email=email)
+            if user is not None:
+                encoded_pk = urlsafe_base64_encode(force_bytes(user.pk))
+                token = PasswordResetTokenGenerator().make_token(user)
+                url = reverse(
+                    "reset-password", kwargs={"encoded_pk": encoded_pk, "token": token}
+                )
+                link = request.build_absolute_uri(url)
+
+                return Response(
+                    {"message": f"Password reset link: {link}"},
+                    status=status.HTTP_200_OK,
+                )
+            else:
+                return Response(
+                    {"message": "User not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordAPI(APIView):
+
+    serializer_class = PasswordResetSerializer
+
+    def patch(self, request, *args, **kwargs):
+        serializer = self.serializer_class(
+            data=request.data, context={"kwargs": kwargs}
+        )
+        serializer.is_valid(raise_exception=True)
+        return Response(
+            {"message": "Password reset complete"},
+            status=status.HTTP_200_OK,
+        )
