@@ -81,8 +81,14 @@ class UserView(APIView):
     authentication_classes = (SessionAuthentication,)
 
     def get(self, request):
-        serializer = UserSerializer(request.user)
-        return Response({"user": serializer.data}, status=status.HTTP_200_OK)
+        # if not authenticated then send error Response
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "User is not authenticated"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+        else:
+            serializer = UserSerializer(request.user)
+            return Response({"user": serializer.data}, status=status.HTTP_200_OK)
 
 
 class PasswordReset(APIView):

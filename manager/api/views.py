@@ -1,19 +1,60 @@
 from django.shortcuts import render
 from rest_framework import generics
 
-from .models import CustomUser, Customer, Vendor, Transaction, Wallet,Notification
-from .serializers import CustomUserSerializer, TransactionSerializer,NotificationSerializer
+from .models import CustomUser, Customer, Vendor, Transaction, Wallet, Notification
+from .serializers import (
+    CustomUserSerializer,
+    TransactionSerializer,
+    NotificationSerializer,
+)
+from rest_framework import status, serializers, permissions
 
 from rest_framework.response import Response
 
 # Create your views here.
 # List of all CustomUsers
 class CustomUserList(generics.ListCreateAPIView):
+    permissions_classes = (permissions.IsAuthenticated,)
+
+    # if user is not admin, send a 403 error
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not request.user.is_superuser:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
+
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
 
+
 # Detail of a CustomUser
 class CustomUserDetail(generics.RetrieveAPIView):
+    # if user is the same as the user_id, or user is admin, send the data
+    permissions_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        # if user is not authenticated
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not (
+            request.user.is_superuser or request.user.user_id == self.kwargs["user_id"]
+        ):
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
+
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
 
@@ -22,34 +63,114 @@ class CustomUserDetail(generics.RetrieveAPIView):
         obj = queryset.get(user_id=self.kwargs["user_id"])
         return obj
 
+
 # List of all the customers
 class CustomerList(generics.ListCreateAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not request.user.is_superuser:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
+
     queryset = Customer.objects.all()
     serializer_class = CustomUserSerializer
 
+
 # List of all the Vendors
 class VendorList(generics.ListCreateAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not request.user.is_superuser:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
+
     queryset = Vendor.objects.all()
     serializer_class = CustomUserSerializer
 
+
 # list of all the transactions
 class TransactionList(generics.ListCreateAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not request.user.is_superuser:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
+
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
+
 
 # detail of a transaction
 class TransactionDetail(generics.RetrieveAPIView):
     queryset = Transaction.objects.all()
     serializer_class = TransactionSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not request.user.is_superuser:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
 
     def get_object(self):
         queryset = self.get_queryset()
         obj = queryset.get(transaction_id=self.kwargs["transaction_id"])
         return obj
 
+
 # list of all the transactions of a User
 class UserTransactionList(generics.ListAPIView):
     serializer_class = TransactionSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not (
+            request.user.is_superuser or request.user.user_id == self.kwargs["user_id"]
+        ):
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
         user_id = self.kwargs["user_id"]
@@ -58,11 +179,30 @@ class UserTransactionList(generics.ListAPIView):
         # as well as the reciever of the transaction
         receiver = CustomUser.objects.get(user_id=user_id)
         wallet2 = Wallet.objects.get(user=receiver)
-        return Transaction.objects.filter(sender=wallet1) | Transaction.objects.filter(receiver=wallet2)
+        return Transaction.objects.filter(sender=wallet1) | Transaction.objects.filter(
+            receiver=wallet2
+        )
+
 
 # list of all the vendors only if the user is a customer
 class CustomerVendorList(generics.ListAPIView):
     serializer_class = CustomUserSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not (
+            request.user.is_superuser or request.user.user_id == self.kwargs["user_id"]
+        ):
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
         user_id = self.kwargs["user_id"]
@@ -76,9 +216,27 @@ class CustomerVendorList(generics.ListAPIView):
             if transaction.receiver.user.is_vendor:
                 vendors.append(transaction.receiver.user)
         return vendors
+
+
 # list of all the customers only if the user is a vendor
 class VendorCustomerList(generics.ListAPIView):
     serializer_class = CustomUserSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not (
+            request.user.is_superuser or request.user.user_id == self.kwargs["user_id"]
+        ):
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
         user_id = self.kwargs["user_id"]
@@ -92,30 +250,81 @@ class VendorCustomerList(generics.ListAPIView):
             if transaction.sender.user.is_customer:
                 customers.append(transaction.sender.user)
         return customers
-#list of all the notifications
+
+
+# list of all the notifications
 class NotificationList(generics.ListAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not request.user.is_superuser:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
+
     queryset = Notification.objects.all()
     serializer_class = NotificationSerializer
 
-#list of all the notifications of a user
+
+# list of all the notifications of a user
 class UserNotificationList(generics.ListAPIView):
     serializer_class = NotificationSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not (
+            request.user.is_superuser or request.user.user_id == self.kwargs["user_id"]
+        ):
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
         user_id = self.kwargs["user_id"]
         user = CustomUser.objects.get(user_id=user_id)
         return Notification.objects.filter(user=user)
 
-#list of all the pending dues of a customer
+
+# list of all the pending dues of a customer
 class PendingDuesList(generics.ListAPIView):
     serializer_class = TransactionSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not (
+            request.user.is_superuser or request.user.user_id == self.kwargs["user_id"]
+        ):
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
         user_id = self.kwargs["user_id"]
         user = CustomUser.objects.get(user_id=user_id)
         wallet = Wallet.objects.get(user=user)
         return Transaction.objects.filter(sender=wallet, transaction_status=2)
-    
+
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         # returning list of sum of dues and associated reciever
@@ -129,16 +338,33 @@ class PendingDuesList(generics.ListAPIView):
             pending_dues[receiver] += transaction.transaction_amount
         return Response({"pending_dues": pending_dues})
 
-#list of all the pending dues for a vendor
+
+# list of all the pending dues for a vendor
 class PendingDuesVendor(generics.ListAPIView):
     serializer_class = TransactionSerializer
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if not (
+            request.user.is_superuser or request.user.user_id == self.kwargs["user_id"]
+        ):
+            return Response(
+                {"message": "Not Authorized to access."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().get(request, *args, **kwargs)
 
     def get_queryset(self):
         user_id = self.kwargs["user_id"]
         user = CustomUser.objects.get(user_id=user_id)
         wallet = Wallet.objects.get(user=user)
         return Transaction.objects.filter(receiver=wallet, transaction_status=2)
-    
+
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         # returning list of sum of dues and associated sender
@@ -151,13 +377,3 @@ class PendingDuesVendor(generics.ListAPIView):
                 pending_dues[sender] = 0
             pending_dues[sender] += transaction.transaction_amount
         return Response({"pending_dues": pending_dues})
-
-"""
-Remaining Views
-1. List of customers to a vendor --done
-2. Pending dues for a vendor
-(What's implemented is all pending dues for a single user and how much others owe him)
-Not separately for a vendor or a customer.
-4. Pending dues of a customer
-3. Set of all notifs -- done
-"""
