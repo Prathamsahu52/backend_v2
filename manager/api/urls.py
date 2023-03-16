@@ -11,8 +11,8 @@ urlpatterns = [
     path("users/<str:user_id>/customers/", views.VendorCustomerList.as_view(), name="vendor_customer"),
     path("users/<str:user_id>/pending_dues/", views.PendingDuesList.as_view(), name="pending_dues"),
     path("users/<str:user_id>/pending_dues_vendor/", views.PendingDuesVendor.as_view(), name="pending_due_for_vendor"),
+    path("users/<str:user_id>/notifications/", views.UserNotificationList.as_view(), name="notification"),
     path("transactions/", views.TransactionList.as_view(), name="transactions"),
     path("transactions/<str:transaction_id>/", views.TransactionDetail.as_view(), name="transaction"),
     path("notifications/", views.NotificationList.as_view(), name="notifications"),
-    path("notifications/<str:user_id>/", views.UserNotificationList.as_view(), name="notification"),
 ]
