@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from rest_framework import generics
-from rest_framework.views import APIView 
+from rest_framework.views import APIView
 from .models import CustomUser, Customer, Vendor, Transaction, Wallet, Notification
 from .serializers import (
     CustomUserSerializer,
@@ -183,37 +183,6 @@ class UserTransactionList(generics.ListCreateAPIView):
             receiver=wallet2
         )
 
-    # making a transaction (takes in the receiver_id, transaction_amount and transaction_status)
-    def post(self, request, *args, **kwargs):
-
-        serializer = TransactionSerializer(
-            data=request.data, context={'request': request}
-        )
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        # from the url
-        # sender_id = self.kwargs["user_id"]
-        # sender = CustomUser.objects.get(user_id=sender_id)
-        # wallet_sender = Wallet.objects.get(user=sender)
-        # receiver_id = request.data.get("receiver_id")
-        # receiver = CustomUser.objects.get(user_id=receiver_id)
-        # wallet_receiver = Wallet.objects.get(user=receiver)
-
-        # transaction_data = {
-        #     "sender": wallet_sender,
-        #     "receiver": wallet_receiver,
-        #     "transaction_amount": request.data.get("transaction_amount"),
-        #     "transaction_status": request.data.get("transaction_status")
-        # }
-
-        # serializer = self.get_serializer(data=transaction_data)
-        # serializer.is_valid(raise_exception=True)
-        # self.perform_create(serializer)
-
-        # return Response({"message": "Transaction updated"})
 
 class UserMakeTransaction(APIView):
     permission_classes = (permissions.IsAuthenticated,)
@@ -223,10 +192,9 @@ class UserMakeTransaction(APIView):
         sender_id = self.kwargs["user_id"]
         print(receiver_id, sender_id)
 
-        
         sender = CustomUser.objects.get(user_id=sender_id)
         wallet_sender = Wallet.objects.get(user=sender)
-        
+
         receiver = CustomUser.objects.get(user_id=receiver_id)
         wallet_receiver = Wallet.objects.get(user=receiver)
 
@@ -234,7 +202,7 @@ class UserMakeTransaction(APIView):
             "sender": wallet_sender.pk,
             "receiver": wallet_receiver.pk,
             "transaction_amount": request.data.get("transaction_amount"),
-            "transaction_status": request.data.get("transaction_status")
+            "transaction_status": request.data.get("transaction_status"),
         }
 
         serializer = TransactionSerializer(data=transaction_data)
@@ -437,3 +405,37 @@ class PendingDuesVendor(generics.ListAPIView):
                 pending_dues[sender] = 0
             pending_dues[sender] += transaction.transaction_amount
         return Response({"pending_dues": pending_dues})
+
+
+class ClearDues(APIView):
+    permissions_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        user_id = self.kwargs["user_id"]
+        user = CustomUser.objects.get(user_id=user_id)
+        wallet = Wallet.objects.get(user=user)
+        transactions = Transaction.objects.filter(sender=wallet, transaction_status=2)
+
+        total_pending_dues = 0
+        pending_dues = {}
+        for transaction in transactions:
+            total_pending_dues += transaction.transaction_amount
+            receiver_wallet = transaction.receiver
+            receiver_ID = receiver_wallet.user.username
+            if receiver_ID not in pending_dues:
+                pending_dues[receiver_ID] = 0
+            pending_dues[receiver_ID] += transaction.transaction_amount
+        
+        if wallet.balance < total_pending_dues:
+            return Response({"message": "Insufficient balance. Kindly add balance to clear dues."})
+        else:
+            # make changes to the pending_dues dict. and transaction status
+            # change the state of the transactions only
+            for transaction in transactions:
+                transaction.transaction_status = 1
+                transaction.save()
+                wallet.pending -= transaction.transaction_amount
+                wallet.balance -= transaction.transaction_amount
+                wallet.save()
+            print(wallet.pending)
+            return Response({"message": "Dues cleared successfully."})
