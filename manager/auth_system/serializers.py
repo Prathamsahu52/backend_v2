@@ -99,4 +99,22 @@ class PasswordResetSerializer(serializers.Serializer):
         user.save()
 
         return data
+
+# Update use profile
+# incoming data : user_id (to recognize the user), email, username, phone_number (optional, update only if provided)
+
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserModel
+        fields = ("email", "username", "phone_number")
+
+    def validate(self, data):
+        email = data.get("email")
+        username = data.get("username")
+        phone_number = data.get("phone_number")
         
+        if email is None and username is None and phone_number is None:
+            raise serializers.ValidationError("At least one field must be provided to update the profile")
+
+        return data
+
