@@ -59,6 +59,7 @@ class UserLogin(APIView):
                     {
                         "message": "User logged in succesfully",
                         "user_id": user.user_id,
+                        "type": user.type,
                      }, 
                     status=status.HTTP_200_OK
                 )
