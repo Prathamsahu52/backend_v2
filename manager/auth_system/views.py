@@ -55,7 +55,11 @@ class UserLogin(APIView):
             if user is not None:
                 login(request, user)
                 return Response(
-                    {"message": "User logged in succesfully"}, status=status.HTTP_200_OK
+                    {
+                        "message": "User logged in succesfully",
+                        "user_id": user.user_id,
+                     }, 
+                    status=status.HTTP_200_OK
                 )
             else:
                 return Response(
