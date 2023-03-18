@@ -7,6 +7,7 @@ urlpatterns = [
     path("users/vendors/", views.VendorList.as_view(), name="vendors"),
     path("users/<str:user_id>/", views.CustomUserDetail.as_view(), name="user"),
     path("users/<str:user_id>/transactions/", views.UserTransactionList.as_view(), name="user_transactions"),
+    path("users/<str:user_id>/transactions/make", views.UserMakeTransaction.as_view(), name="user_transactions_post"),
     path("users/<str:user_id>/vendors/", views.CustomerVendorList.as_view(), name="customer_vendor"),
     path("users/<str:user_id>/customers/", views.VendorCustomerList.as_view(), name="vendor_customer"),
     path("users/<str:user_id>/pending_dues/", views.PendingDuesList.as_view(), name="pending_dues"),
