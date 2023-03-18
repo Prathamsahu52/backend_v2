@@ -7,6 +7,7 @@ from .serializers import (
     UserSerializer,
     EmailSerializer,
     PasswordResetSerializer,
+    UpdateProfileSerializer
 )
 from django.contrib.auth import get_user_model, authenticate, login, logout
 from rest_framework.authentication import SessionAuthentication
@@ -55,7 +56,12 @@ class UserLogin(APIView):
             if user is not None:
                 login(request, user)
                 return Response(
-                    {"message": "User logged in succesfully"}, status=status.HTTP_200_OK
+                    {
+                        "message": "User logged in succesfully",
+                        "user_id": user.user_id,
+                        "type": user.type,
+                     }, 
+                    status=status.HTTP_200_OK
                 )
             else:
                 return Response(
@@ -132,3 +138,18 @@ class ResetPasswordAPI(APIView):
             {"message": "Password reset complete"},
             status=status.HTTP_200_OK,
         )
+
+# update the user profile view
+class UserUpdate(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    authentication_classes = (SessionAuthentication,)
+
+    def put(self, request, *args, **kwargs):
+        user_id = request.data.get("user_id")
+        user = UserModel.objects.get(user_id=user_id)
+        serializer = UpdateProfileSerializer(user, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"message": "User updated succesfully"}, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.error, status=status.HTTP_400_BAD_REQUEST)
