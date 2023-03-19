@@ -84,12 +84,14 @@ class Transaction(models.Model):
     FAILED = 1
     PENDING = 2
     IN_REVIEW = 3
+    CLEARED = 4
 
     TRANSACTION_STATUS = [
         (SUCCESS, "Success"),
         (FAILED, "Failed"),
         (PENDING, "Pending"),
         (IN_REVIEW, "In Review"),
+        (CLEARED, "Cleared"),
     ]
     transaction_status = models.IntegerField(
         choices=TRANSACTION_STATUS, default=SUCCESS
@@ -125,7 +127,33 @@ class Transaction(models.Model):
         if self.transaction_id is None:
             self.transaction_id = generate_txn_id()
 
-        if self.transaction_status == self.PENDING:
+        # print("Sender pending in bening: ", self.sender.pending)
+        if self.transaction_status == self.CLEARED:
+            # print("Saving cleared transaction..., amount: ", self.transaction_amount)
+            # print("Sender pending: ", self.sender.pending)
+            # print("Sender balance: ", self.sender.balance)
+            self.sender.pending -= self.transaction_amount
+            # print("Sender pending: ", self.sender.pending)
+            # self.sender.balance -= self.transaction_amount
+            # self.receiver.balance += self.transaction_amount
+            Notification.objects.create(
+                user=self.sender.user,
+                timestamp=self.timestamp,
+                subject="Transaction cleared.",
+                content=f"Due cleared for Rs. {self.transaction_amount} to {self.receiver.user.username} at {get_time(datetime.now())}.",
+            )
+
+            Notification.objects.create(
+                user=self.receiver.user,
+                timestamp=self.timestamp,
+                subject="Transaction cleared.",
+                content=f"Due cleared for Rs. {self.transaction_amount} from {self.sender.user.username} at {get_time(datetime.now())}.",
+            )
+            # saving the wallets
+            # self.sender.save()
+            super(Wallet, self.sender).save(*args, **kwargs)
+            # self.receiver.save()
+        elif self.transaction_status == self.PENDING:
             if (self.sender.pending + self.transaction_amount) <= PENDING_LIMIT:
                 self.sender.pending += self.transaction_amount
                 Notification.objects.create(
@@ -141,7 +169,9 @@ class Transaction(models.Model):
                     subject="Transaction with payment pending.",
                     content=f"Received Rs. {self.transaction_amount} as PENDING from {self.sender.user.username} at {get_time(datetime.now())}.",
                 )
-
+                # saving the wallets
+                self.sender.save()
+                self.receiver.save()
             else:
                 self.transaction_status = self.FAILED
                 Notification.objects.create(
@@ -162,9 +192,11 @@ class Transaction(models.Model):
             )
 
         else:
+            # print("Saving valid transaction..., amount: ", self.transaction_amount)
             self.transaction_status = self.SUCCESS
             self.sender.balance -= self.transaction_amount
             self.receiver.balance += self.transaction_amount
+            # print("Sender pending inside valid transaction: ", self.sender.pending)
 
             Notification.objects.create(
                 user=self.sender.user,
@@ -178,9 +210,9 @@ class Transaction(models.Model):
                 subject="Transaction success.",
                 content=f"Rs. {self.transaction_amount} received from {self.sender.user.username} at {get_time(datetime.now())}.",
             )
-
-        self.sender.save()
-        self.receiver.save()
+            # saving the wallets
+            self.sender.save()
+            self.receiver.save()
 
         if self.sender.balance < 0:
             self.transaction_status = self.FAILED
@@ -188,6 +220,9 @@ class Transaction(models.Model):
             self.receiver.balance -= self.transaction_amount
             self.sender.save()
             self.receiver.save()
+
+        # print("Sender pending final: ", self.sender.pending)
+
 
         super().save(*args, **kwargs)
 
