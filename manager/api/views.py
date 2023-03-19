@@ -506,3 +506,15 @@ class ClearDuesVendor(APIView):
             )
             # print("New Transaction instantiated while clearing dues")
             return Response({"message": "Dues cleared successfully."})
+        
+class UserAddBalance(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    
+    def post(self, request, *args, **kwargs):
+        user_id = self.kwargs["user_id"]
+        user = CustomUser.objects.get(user_id=user_id)
+        wallet = Wallet.objects.get(user=user)
+
+        wallet.balance += request.data["amount"]
+        wallet.save()
+        return Response({"message": "Balance addition successful!"})
