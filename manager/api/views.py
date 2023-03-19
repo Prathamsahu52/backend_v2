@@ -363,6 +363,7 @@ class PendingDuesList(generics.ListAPIView):
                 pending_dues[receiver.user_id] = {
                     "receiver_name": receiver.username,
                     "receiver_id": receiver.user_id,
+                    "receiver_email": receiver.email,
                     "dues": 0
                 }
             pending_dues[receiver.user_id]["dues"] += transaction.transaction_amount
@@ -404,8 +405,9 @@ class PendingDuesVendor(generics.ListAPIView):
             sender = sender_wallet.user
             if sender.user_id not in pending_dues:
                 pending_dues[sender.user_id] = {
-                    "receiver_name": sender.username,
-                    "receiver_id": sender.user_id,
+                    "sender_name": sender.username,
+                    "sender_id": sender.user_id,
+                    "sender_email": sender.email,
                     "dues": 0
                 }
             pending_dues[sender.user_id]["dues"] += transaction.transaction_amount
@@ -518,3 +520,52 @@ class UserAddBalance(APIView):
         wallet.balance += request.data["amount"]
         wallet.save()
         return Response({"message": "Balance addition successful!"})
+    
+class OverviewNavbar(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        user_id = self.kwargs["user_id"]
+        user = CustomUser.objects.get(user_id=user_id)
+        wallet = Wallet.objects.get(user=user)
+        if user.is_customer:
+            response = {"balance": wallet.balance, "pending_dues": wallet.pending}
+            return Response(response)
+        else:
+            transactions = Transaction.objects.filter(receiver=wallet, transaction_status=2)
+            dues = 0
+            for transaction in transactions:
+                dues += transaction.transaction_amount
+            
+            response = {"balance": wallet.balance, "pending_dues": dues}
+            return Response(response)
+        
+class OverviewTable(APIView):
+    permission_class = (permissions.IsAuthenticated,)
+
+    def get(self, request, *args, **kwargs):
+        user_id = self.kwargs["user_id"]
+        user = CustomUser.objects.get(user_id=user_id)
+        wallet = Wallet.objects.get(user=user)
+        if user.is_customer:
+            transactions_vendor = Transaction.objects.filter(sender=wallet, receiver__user__is_vendor=True).order_by("-timestamp")[:5]
+            transaction_non_vendor = Transaction.objects.filter(sender=wallet, receiver__user__is_customer=True).order_by("-timestamp")[:5]
+            transaction_vendor_serializer = TransactionSerializer(transactions_vendor, many=True)
+            transaction_non_vendor_serializer = TransactionSerializer(transaction_non_vendor, many=True)
+            for transaction in transactions_vendor:
+                return Response({
+                    "recent_transactions": {
+                        "transactions_vendor": transaction_vendor_serializer.data,
+                        "transactions_non_vendor": transaction_non_vendor_serializer.data
+                    }
+                })
+        else:
+            transactions = Transaction.objects.filter(receiver=wallet).order_by("-timestamp")[:10]
+            transaction_serializer = TransactionSerializer(transactions, many=True)
+            return Response({
+                "recent_transactions": {
+                    "transaction_non_vendor": transaction_serializer.data
+                }
+            })
+
+
