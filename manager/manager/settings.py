@@ -65,6 +65,8 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'manager.urls'
 
+SESSION_COOKIE_HTTPONLY = False
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
