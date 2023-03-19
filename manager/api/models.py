@@ -48,6 +48,10 @@ class Wallet(models.Model):
 
     def __str__(self):
         return f"{self.user.username}'s Wallet"
+    
+    def save(self, *args, **kwargs):
+        self.wallet_id = self.user.user_id
+        super().save(*args, **kwargs)
 
 
 class Notification(models.Model):
