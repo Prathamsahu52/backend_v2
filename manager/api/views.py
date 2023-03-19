@@ -355,16 +355,19 @@ class PendingDuesList(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        # returning list of sum of dues and associated reciever
-        serializer = self.get_serializer(queryset, many=True)
         pending_dues = {}
         for transaction in queryset:
             receiver_wallet = transaction.receiver
-            receiver = receiver_wallet.user.username
-            if receiver not in pending_dues:
-                pending_dues[receiver] = 0
-            pending_dues[receiver] += transaction.transaction_amount
-        return Response({"pending_dues": pending_dues})
+            receiver = receiver_wallet.user
+            if receiver.user_id not in pending_dues:
+                pending_dues[receiver.user_id] = {
+                    "receiver_name": receiver.username,
+                    "receiver_id": receiver.user_id,
+                    "dues": 0
+                }
+            pending_dues[receiver.user_id]["dues"] += transaction.transaction_amount
+        result = {"pending_dues": list(pending_dues.values())}
+        return Response(result)
 
 
 # list of all the pending dues for a vendor
@@ -395,16 +398,19 @@ class PendingDuesVendor(generics.ListAPIView):
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        # returning list of sum of dues and associated sender
-        serializer = self.get_serializer(queryset, many=True)
         pending_dues = {}
         for transaction in queryset:
             sender_wallet = transaction.sender
-            sender = sender_wallet.user.username
-            if sender not in pending_dues:
-                pending_dues[sender] = 0
-            pending_dues[sender] += transaction.transaction_amount
-        return Response({"pending_dues": pending_dues})
+            sender = sender_wallet.user
+            if sender.user_id not in pending_dues:
+                pending_dues[sender.user_id] = {
+                    "receiver_name": sender.username,
+                    "receiver_id": sender.user_id,
+                    "dues": 0
+                }
+            pending_dues[sender.user_id]["dues"] += transaction.transaction_amount
+        result = {"pending_dues": list(pending_dues.values())}
+        return Response(result)
 
 
 class ClearDues(APIView):
