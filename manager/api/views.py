@@ -8,6 +8,11 @@ from .serializers import (
     NotificationSerializer,
 )
 from rest_framework import status, serializers, permissions
+from django.db.models import Q
+import json
+from django.core.serializers.json import DjangoJSONEncoder
+from decimal import Decimal
+from datetime import datetime
 
 from rest_framework.response import Response
 
@@ -153,35 +158,59 @@ class TransactionDetail(generics.RetrieveAPIView):
 
 
 # list of all the transactions of a User
-class UserTransactionList(generics.ListCreateAPIView):
-    serializer_class = TransactionSerializer
+# class UserTransactionList(generics.ListCreateAPIView):
+#     serializer_class = TransactionSerializer
+#     permission_classes = (permissions.IsAuthenticated,)
+
+#     def get(self, request, *args, **kwargs):
+#         if not request.user.is_authenticated:
+#             return Response(
+#                 {"message": "Not Authorized to access."},
+#                 status=status.HTTP_403_FORBIDDEN,
+#             )
+#         if not (
+#             request.user.is_superuser or request.user.user_id == self.kwargs["user_id"]
+#         ):
+#             return Response(
+#                 {"message": "Not Authorized to access."},
+#                 status=status.HTTP_403_FORBIDDEN,
+#             )
+#         return super().get(request, *args, **kwargs)
+
+#     def get_queryset(self):
+#         user_id = self.kwargs["user_id"]
+#         sender = CustomUser.objects.get(user_id=user_id)
+#         wallet1 = Wallet.objects.get(user=sender)
+#         # as well as the reciever of the transaction
+#         receiver = CustomUser.objects.get(user_id=user_id)
+#         wallet2 = Wallet.objects.get(user=receiver)
+#         return Transaction.objects.filter(sender=wallet1) | Transaction.objects.filter(
+#             receiver=wallet2
+#         )
+class UserTransactionList(APIView):
     permission_classes = (permissions.IsAuthenticated,)
 
     def get(self, request, *args, **kwargs):
-        if not request.user.is_authenticated:
-            return Response(
-                {"message": "Not Authorized to access."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        if not (
-            request.user.is_superuser or request.user.user_id == self.kwargs["user_id"]
-        ):
-            return Response(
-                {"message": "Not Authorized to access."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        return super().get(request, *args, **kwargs)
-
-    def get_queryset(self):
         user_id = self.kwargs["user_id"]
         sender = CustomUser.objects.get(user_id=user_id)
-        wallet1 = Wallet.objects.get(user=sender)
-        # as well as the reciever of the transaction
-        receiver = CustomUser.objects.get(user_id=user_id)
-        wallet2 = Wallet.objects.get(user=receiver)
-        return Transaction.objects.filter(sender=wallet1) | Transaction.objects.filter(
-            receiver=wallet2
-        )
+        wallet = Wallet.objects.get(user=sender)
+        transactions = Transaction.objects.filter(Q(sender=wallet) | Q(receiver=wallet))
+        data = []
+        for transaction in transactions:
+            item = {
+                "transaction_id": transaction.transaction_id,
+                "timestamp": transaction.timestamp,
+                "transaction_amount": transaction.transaction_amount,
+                "transaction_status": transaction.transaction_status,
+                "sender": transaction.sender.user.user_id,
+                "receiver": transaction.receiver.user.user_id
+            }
+            data.append(item)
+        
+        # response_data = json.dumps(data, cls=CustomJSONEncoder)
+        # print(response_data)
+        return Response(data, status=status.HTTP_200_OK)
+        
 
 
 class UserMakeTransaction(APIView):
