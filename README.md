@@ -97,4 +97,31 @@ If you wish, you can install all the required packages step-by-step as well.
     pip3 install djangorestframework-simplejwt==5.2.2
   ```
   
-You are now good to go!
+## When starting the server for the first time you must run the following commands:
+
+  Ensure that you are inside the directory :/backend/manager (**your current working directory must contain the file manage.py**)
+
+  ```
+    python3 manage.py makemigrations
+  ```
+  ```
+    python3 manage.py migrate
+  ```
+  ```
+    python3 manage.py migrate --run-syncdb
+  ```
+  
+  Now your server is ready to be run. Before that, do create a superuser for yourself so that you can access the backend as an admin.
+  To create a superuser, run the following commands:
+  
+  ```
+    python manage.py createsuperuser
+  ```
+  And enter your details as per the prompts. 
+  
+  Now, you may run the server.
+  
+## To run the server, enter the following command:
+  ```
+    python3 manage.py runserver
+  ```
