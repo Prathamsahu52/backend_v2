@@ -16,6 +16,7 @@ urlpatterns = [
     path("users/<str:user_id>/customers/", views.VendorCustomerList.as_view(), name="vendor_customer"),
     path("users/<str:user_id>/pending_dues/", views.PendingDuesList.as_view(), name="pending_dues"),
     path("users/<str:user_id>/pending_dues_vendor/", views.PendingDuesVendor.as_view(), name="pending_due_for_vendor"),
+    path("users/<str:user_id>/request_clearance/", views.RequestClearance.as_view(), name="request_clearance"),
     path("users/<str:user_id>/notifications/", views.UserNotificationList.as_view(), name="notification"),
     path("users/<str:user_id>/add_balance/", views.UserAddBalance.as_view(), name="add_balance"), 
     path("transactions/", views.TransactionList.as_view(), name="transactions"),
