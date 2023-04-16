@@ -237,7 +237,12 @@ class UserMakeTransaction(APIView):
         serializer = TransactionSerializer(data=transaction_data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-
+        # if wallet balance less than transaction amount
+        if wallet_sender.balance < int(transaction_data["transaction_amount"]):
+            return Response(
+                {"message": "Insufficient Balance"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response({"message": "Transaction updated"})
 
 
