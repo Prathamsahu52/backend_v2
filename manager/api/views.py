@@ -602,4 +602,41 @@ class OverviewTable(APIView):
                 }
             })
 
+# writing a POST request so that when it is called, notifications are sent to all customers, who have pending dues
+class RequestClearance(APIView):
+    permission_classes = (permissions.IsAuthenticated,)
+
+    def post(self, request, *args, **kwargs):
+        user_id = self.kwargs["user_id"]
+        user = CustomUser.objects.get(user_id=user_id)
+        wallet = Wallet.objects.get(user=user)
+        transactions = Transaction.objects.filter(receiver=wallet, transaction_status=2)
+        # for transaction in transactions:
+        #     receiver = transaction.receiver.user
+        #     if receiver.is_customer:
+        #         notification = Notification.objects.create(
+        #             user=receiver,
+        #             message="You have pending dues of Rs. " + str(transaction.transaction_amount) + " with " + str(user.user_id) + ". Kindly clear the dues.",
+        #             notification_type=1,
+        #         )
+        #         notification.save()
+
+        # calculate the total dues pending with each customer and send a single notification
+        pending_dues = {}
+        for transaction in transactions:
+            sender = transaction.sender.user
+            if sender not in pending_dues:
+                pending_dues[sender] = 0
+            pending_dues[sender] += transaction.transaction_amount
+        print(pending_dues)
+        for sender in pending_dues:
+            print(sender.user_id)
+            Notification.objects.create(
+                user=sender,
+                subject="Requesting clearance of pending dues",
+                content="You have pending dues of Rs. " + str(pending_dues[sender]) + " with " + str(user.user_id) + ". Kindly clear the dues.",
+            )
+            # notification.save()
+
+        return Response({"message": "Notifications sent successfully!"})
 
